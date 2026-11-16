@@ -29,3 +29,14 @@ int handle_builtin(char **args) {
     
     return 0; // Not a built-in
 }
+
+// Parse the line into tokens (args array)
+void parse_line(char *line, char **args) {
+    int i = 0;
+    char *token = strtok(line, " \t\r\n\a");
+    while (token != NULL && i < MAX_ARGS - 1) {
+        args[i++] = token;
+        token = strtok(NULL, " \t\r\n\a");
+    }
+    args[i] = NULL;
+}
