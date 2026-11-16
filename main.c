@@ -67,3 +67,42 @@ int launch_process(char **args) {
 
     return 1;
 }
+
+// main 
+int main(void) {
+    char *line = NULL;
+    size_t bufsize = 0;
+    char *args[MAX_ARGS];
+    int status = 1;
+
+    // Main REPL Loop
+    do {
+        // Print prompt
+        printf("myshell> ");
+        fflush(stdout);
+
+        // Read line input
+        if (getline(&line, &bufsize, stdin) == -1) {
+            if (feof(stdin)) {
+                // End of File (Ctrl+D)
+                printf("\n");
+                break;
+            } else {
+                perror("myshell: getline");
+                break;
+            }
+        }
+
+        // Parse arguments
+        parse_line(line, args);
+
+        // Execute if not a built-in
+        if (!handle_builtin(args)) {
+            launch_process(args);
+        }
+
+    } while (status);
+
+    free(line);
+    return 0;
+}
