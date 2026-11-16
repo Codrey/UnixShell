@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define MAX_LINE 1024
 #define MAX_ARGS 64
@@ -39,4 +41,29 @@ void parse_line(char *line, char **args) {
         token = strtok(NULL, " \t\r\n\a");
     }
     args[i] = NULL;
+}
+
+// for external binary using fork and execvp execution
+int launch_process(char **args) {
+    pid_t pid;
+    int status;
+
+    pid = fork();
+    if (pid == 0) {
+        // Child process
+        if (execvp(args[0], args) == -1) {
+            perror("myshell");
+        }
+        exit(EXIT_FAILURE);
+    } else if (pid < 0) {
+        // Error forking
+        perror("myshell");
+    } else {
+        // Parent process waits for child to finish
+        do {
+            waitpid(pid, &status, WUNTRACED);
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+
+    return 1;
 }
