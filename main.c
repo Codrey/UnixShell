@@ -110,6 +110,64 @@ int launch_process(char **args) {
     return 1;
 }
 
+// Execution of pipeline between two commands (cmd1 | cmd2)
+int launch_pipe(char **args1, char **args2) {
+    int pipefd[2];
+    pid_t pid1, pid2;
+    int status1, status2;
+
+    if (pipe(pipefd) < 0) {
+        perror("myshell: pipe");
+        return 1;
+    }
+
+    pid1 = fork();
+    if (pid1 < 0) {
+        perror("myshell: fork");
+        return 1;
+    }
+
+    if (pid1 == 0) {
+        // First child: Redirect stdout to pipe write end
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[0]);
+        close(pipefd[1]);
+
+        if (execvp(args1[0], args1) == -1) {
+            perror("myshell");
+        }
+        exit(EXIT_FAILURE);
+    }
+
+    pid2 = fork();
+    if (pid2 < 0) {
+        perror("myshell: fork");
+        return 1;
+    }
+
+    if (pid2 == 0) {
+        // Second child: Redirect stdin to pipe read end
+        dup2(pipefd[0], STDIN_FILENO);
+        close(pipefd[0]);
+        close(pipefd[1]);
+
+        if (execvp(args2[0], args2) == -1) {
+            perror("myshell");
+        }
+        exit(EXIT_FAILURE);
+    }
+
+    // Parent closes both ends of the pipe
+    close(pipefd[0]);
+    close(pipefd[1]);
+
+    // Wait for both children to finish
+    waitpid(pid1, &status1, 0);
+    waitpid(pid2, &status2, 0);
+
+    return 1;
+}
+
 // main 
 int main(void) {
     char *line = NULL;
@@ -119,14 +177,11 @@ int main(void) {
 
     // Main REPL Loop
     do {
-        // Print prompt
         printf("myshell> ");
         fflush(stdout);
 
-        // Read line input
         if (getline(&line, &bufsize, stdin) == -1) {
             if (feof(stdin)) {
-                // End of File (Ctrl+D)
                 printf("\n");
                 break;
             } else {
@@ -135,12 +190,36 @@ int main(void) {
             }
         }
 
-        // Parse arguments
         parse_line(line, args);
 
-        // Execute if not a built-in
-        if (!handle_builtin(args)) {
-            launch_process(args);
+        if (args[0] == NULL) {
+            continue; // Empty line
+        }
+
+        // Check for a pipe operator
+        int has_pipe = 0;
+        int pipe_index = -1;
+        for (int i = 0; args[i] != NULL; i++) {
+            if (strcmp(args[i], "|") == 0) {
+                has_pipe = 1;
+                pipe_index = i;
+                break;
+            }
+        }
+
+        if (has_pipe) {
+            args[pipe_index] = NULL; // Split args into left side
+            char **args2 = &args[pipe_index + 1]; // Right side of pipe
+            if (args2[0] == NULL) {
+                fprintf(stderr, "myshell: syntax error near unexpected token `|'\n");
+            } else {
+                launch_pipe(args, args2);
+            }
+        } else {
+            // Execute if not a built-in
+            if (!handle_builtin(args)) {
+                launch_process(args);
+            }
         }
 
     } while (status);
