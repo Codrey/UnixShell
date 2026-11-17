@@ -179,10 +179,37 @@ int launch_pipe(char **args1, char **args2) {
     return 1;
 }
 
+// Custom Readline handler: '/' triggers recursive search, if '/' is pressed on an empty line 
+int slash_search_handler(int count, int key) {
+    if (rl_point == 0) {
+        // When line is empty, execute recursive directory search
+        printf("\n--- Recursive Directory Search ---\n");
+        FILE *fp = popen("find . -maxdepth 3 -not -path '*/.*' 2>/dev/null", "r");
+        if (fp) {
+            char path[1024];
+            while (fgets(path, sizeof(path), fp) != NULL) {
+                printf("  %s", path);
+            }
+            pclose(fp);
+        }
+        printf("----------------------------------\n");
+        // Clear line buffer, and redraw prompt cleanly
+        rl_on_new_line();
+        rl_redisplay();
+        return 0;
+    } else {
+        // When linen not empty, insert the '/' character normally
+        return rl_insert(count, key);
+    }
+}
+
 // main 
 int main(void) {
     char *line;
     char *args[MAX_ARGS];
+
+    // Bind the '/' to custom handler
+    rl_bind_key('/', slash_search_handler);
 
     // Main REPL Loop using GNU Readline
     while (1) {
