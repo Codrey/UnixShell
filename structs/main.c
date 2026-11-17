@@ -226,7 +226,7 @@ char **my_completion(const char *text, int start, int end) {
     return matches;
 } 
 
-// testing time embedding
+// Prompt string with the current timestamp embedding
 void get_prompt(char *prompt_buf, size_t size) {
     time_t currentTime;
     time(&currentTime);
@@ -243,7 +243,7 @@ void get_prompt(char *prompt_buf, size_t size) {
 int main(void) {
     char *line;
     char *args[MAX_ARGS];
-    char prompt[64]; // Buffer to test time embedded string
+    char prompt[64]; // Buffer for time embedded string
 
     // Enable search menu completion (Up/Down arrows nav cycling through matches)
     rl_variable_bind("menu-complete-display-prefix", "on");
