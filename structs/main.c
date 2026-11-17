@@ -7,6 +7,8 @@
 #include <sys/wait.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #define MAX_ARGS 64
 
@@ -179,37 +181,62 @@ int launch_pipe(char **args1, char **args2) {
     return 1;
 }
 
-// Custom Readline handler: '/' triggers recursive search, if '/' is pressed on an empty line 
-int slash_search_handler(int count, int key) {
-    if (rl_point == 0) {
-        // When line is empty, execute recursive directory search
-        printf("\n--- Recursive Directory Search ---\n");
-        FILE *fp = popen("find . -maxdepth 3 -not -path '*/.*' 2>/dev/null", "r");
-        if (fp) {
-            char path[1024];
-            while (fgets(path, sizeof(path), fp) != NULL) {
-                printf("  %s", path);
-            }
-            pclose(fp);
-        }
-        printf("----------------------------------\n");
-        // Clear line buffer, and redraw prompt cleanly
-        rl_on_new_line();
-        rl_redisplay();
-        return 0;
-    } else {
-        // When linen not empty, insert the '/' character normally
-        return rl_insert(count, key);
+// Search 1.1 for recursive directory search completetion
+char *recursive_file_generator(const char *text, int state) {
+    static DIR *dir = NULL;
+    static char prefix[256];
+    struct dirent *entry;
+    char fullpath[512];
+    // struct stat st;
+
+    // If state equals 0, it's a new completion attempt; open root/current dir
+    if (state == 0) {
+        dir = opendir(".");
+        if (!dir) return NULL;
+        // Text contains what user typed after '/'
+        strncpy(prefix, text, sizeof(prefix) - 1);
     }
+
+    while ((entry = readdir(dir)) != NULL) {
+        // Skips any hidden files/directories (. and ..)
+        if (entry->d_name[0] == '.') continue;
+
+        snprintf(fullpath, sizeof(fullpath), "%s", entry->d_name);
+
+        // Check if characters matche the prefix typed thus far
+        if (strncmp(fullpath, prefix, strlen(prefix)) == 0) {
+            // Allocates a copy for readline to manage
+            return strdup(fullpath);
+        }
+    }
+
+    closedir(dir);
+    dir = NULL;
+    return NULL;
 }
+
+// Readline search completion entry hook
+char **my_completion(const char *text, int start, int end) {
+    (void)end; // Silence the unused parameter warning
+    char **matches = NULL;
+    // If the line starts with '/', use the recursive file generator
+    if (start > 0 && rl_line_buffer[0] == '/') {
+        matches = rl_completion_matches(text, recursive_file_generator);
+    }
+    return matches;
+} 
 
 // main 
 int main(void) {
     char *line;
     char *args[MAX_ARGS];
 
-    // Bind the '/' to custom handler
-    rl_bind_key('/', slash_search_handler);
+    // Enable search menu completion (Up/Down arrows nav cycling through matches)
+    rl_variable_bind("menu-complete-display-prefix", "on");
+    rl_bind_key('\t', rl_complete);
+    
+    // Set the custom completion function
+    rl_attempted_completion_function = my_completion;
 
     // Main REPL Loop using GNU Readline
     while (1) {
