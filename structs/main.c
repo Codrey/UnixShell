@@ -187,7 +187,6 @@ char *recursive_file_generator(const char *text, int state) {
     static char prefix[256];
     struct dirent *entry;
     char fullpath[512];
-    // struct stat st;
 
     // If state equals 0, it's a new completion attempt; open root/current dir
     if (state == 0) {
