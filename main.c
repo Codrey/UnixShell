@@ -5,8 +5,10 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
-#define MAX_LINE 1024
+// #define MAX_LINE 1024 - removed for libreadline LDFLAGS
 #define MAX_ARGS 64
 
 // Handles built in shell commands to modify the shell state
@@ -170,30 +172,33 @@ int launch_pipe(char **args1, char **args2) {
 
 // main 
 int main(void) {
-    char *line = NULL;
-    size_t bufsize = 0;
+    char *line;
     char *args[MAX_ARGS];
-    int status = 1;
 
-    // Main REPL Loop
-    do {
-        printf("myshell> ");
-        fflush(stdout);
+    // Main REPL Loop using GNU Readline
+    while (1) {
+        line = readline("myshell> ");
 
-        if (getline(&line, &bufsize, stdin) == -1) {
-            if (feof(stdin)) {
-                printf("\n");
-                break;
-            } else {
-                perror("myshell: getline");
-                break;
-            }
+        if (line == NULL) {
+            // End of File (Ctrl+D)
+            printf("\n");
+            break;
         }
+
+        // Ignore empty lines
+        if (line[0] == '\0') {
+            free(line);
+            continue;
+        }
+
+        // Adding command history (for up/down arrow navigation)
+        add_history(line);
 
         parse_line(line, args);
 
         if (args[0] == NULL) {
-            continue; // Empty line
+            free(line);
+            continue;
         }
 
         // Check for a pipe operator
@@ -208,22 +213,21 @@ int main(void) {
         }
 
         if (has_pipe) {
-            args[pipe_index] = NULL; // Split args into left side
-            char **args2 = &args[pipe_index + 1]; // Right side of pipe
+            args[pipe_index] = NULL;
+            char **args2 = &args[pipe_index + 1];
             if (args2[0] == NULL) {
                 fprintf(stderr, "myshell: syntax error near unexpected token `|'\n");
             } else {
                 launch_pipe(args, args2);
             }
         } else {
-            // Execute if not a built-in
             if (!handle_builtin(args)) {
                 launch_process(args);
             }
         }
 
-    } while (status);
+        free(line);
+    }
 
-    free(line);
     return 0;
 }
