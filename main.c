@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -43,14 +44,55 @@ void parse_line(char *line, char **args) {
     args[i] = NULL;
 }
 
-// for external binary using fork and execvp execution
+// External binary execution using fork, execvp, handle I/O redirection
 int launch_process(char **args) {
     pid_t pid;
     int status;
 
     pid = fork();
     if (pid == 0) {
-        // Child process
+        // Child process: Scan for I/O redirection operators
+        for (int i = 0; args[i] != NULL; i++) {
+            if (strcmp(args[i], ">") == 0) {
+                // Output Redirection
+                if (args[i + 1] == NULL) {
+                    fprintf(stderr, "myshell: syntax error near unexpected token `newline'\n");
+                    exit(EXIT_FAILURE);
+                }
+                int fd = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                if (fd < 0) {
+                    perror("myshell: open");
+                    exit(EXIT_FAILURE);
+                }
+                if (dup2(fd, STDOUT_FILENO) < 0) {
+                    perror("myshell: dup2");
+                    exit(EXIT_FAILURE);
+                }
+                close(fd);
+                args[i] = NULL; // Cut off args so execvp ignores '>' and filename
+                break;
+            } else if (strcmp(args[i], "<") == 0) {
+                // Input Redirection
+                if (args[i + 1] == NULL) {
+                    fprintf(stderr, "myshell: syntax error near unexpected token `newline'\n");
+                    exit(EXIT_FAILURE);
+                }
+                int fd = open(args[i + 1], O_RDONLY);
+                if (fd < 0) {
+                    perror("myshell: open");
+                    exit(EXIT_FAILURE);
+                }
+                if (dup2(fd, STDIN_FILENO) < 0) {
+                    perror("myshell: dup2");
+                    exit(EXIT_FAILURE);
+                }
+                close(fd);
+                args[i] = NULL; // Cut off args
+                break;
+            }
+        }
+
+        // Execute binary
         if (execvp(args[0], args) == -1) {
             perror("myshell");
         }
