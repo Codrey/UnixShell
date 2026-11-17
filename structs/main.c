@@ -9,6 +9,7 @@
 #include <readline/history.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #define MAX_ARGS 64
 
@@ -181,7 +182,7 @@ int launch_pipe(char **args1, char **args2) {
     return 1;
 }
 
-// Search 1.1 for recursive directory search completetion
+// Search 1.1 for recursive directory search and basic text completetion
 char *recursive_file_generator(const char *text, int state) {
     static DIR *dir = NULL;
     static char prefix[256];
@@ -225,10 +226,24 @@ char **my_completion(const char *text, int start, int end) {
     return matches;
 } 
 
-// main 
+// testing time embedding
+void get_prompt(char *prompt_buf, size_t size) {
+    time_t currentTime;
+    time(&currentTime);
+    struct tm *localTime = localtime(&currentTime);
+    
+    // Formats as "myshell:HH:MM:SS>" (adjust format specifier if you only want HH:MM)
+    char time_str[32];
+    strftime(time_str, sizeof(time_str), "%H:%M:%S", localTime);
+    
+    snprintf(prompt_buf, size, "myshell:%s>", time_str);
+}
+
+// Main 
 int main(void) {
     char *line;
     char *args[MAX_ARGS];
+    char prompt[64]; // Buffer to test time embedded string
 
     // Enable search menu completion (Up/Down arrows nav cycling through matches)
     rl_variable_bind("menu-complete-display-prefix", "on");
@@ -239,10 +254,14 @@ int main(void) {
 
     // Main REPL Loop using GNU Readline
     while (1) {
-        line = readline("myshell> ");
-
-        if (line == NULL) {
-            // End of File (Ctrl+D)
+        // Generate live timestamp test prompt 
+        get_prompt(prompt, sizeof(prompt));
+        
+	// Pass the dynamic prompt into readline
+        line = readline(prompt);
+	
+	if (line == NULL) {
+            // End of file (Ctrl+D)
             printf("\n");
             break;
         }
