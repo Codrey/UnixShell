@@ -8,7 +8,6 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-// #define MAX_LINE 1024 - removed for libreadline LDFLAGS
 #define MAX_ARGS 64
 
 // Handles built in shell commands to modify the shell state
@@ -27,6 +26,16 @@ int handle_builtin(char **args) {
         } else {
             if (chdir(args[1]) != 0) {
                 perror("myshell");
+            }
+        }
+        return 1;
+    }
+
+    if (strcmp(args[0], "history") == 0) {
+        HIST_ENTRY **the_list = history_list();
+        if (the_list) {
+            for (int i = 0; the_list[i] != NULL; i++) {
+                printf("%d  %s\n", i + history_base, the_list[i]->line);
             }
         }
         return 1;
