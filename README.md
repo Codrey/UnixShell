@@ -102,14 +102,14 @@ To help explain the core systems concepts used in this project, check out our re
 ### Example Usage
 
  **Print extracted text to standard output (acting as a filter):**
-  ```bash
+  
   pdftotext document.pdf -
 
 **Searching for conecpt or keywords inside the PDF can be done with using a pipe:**
-  ```bash
+  
   pdftotext document.pdf - | grep "keyword"
 
 **To extract and save text to a new file type use the follwoing**
-  ```bash
+  
   pdftotext document.pdf extracted_output.txt
 
