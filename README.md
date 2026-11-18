@@ -103,13 +103,13 @@ To help explain the core systems concepts used in this project, check out our re
 
  **Print extracted text to standard output (acting as a filter):**
   
-  pdftotext document.pdf -
+  `pdftotext document.pdf -`
 
 **Searching for conecpt or keywords inside the PDF can be done with using a pipe:**
   
-  pdftotext document.pdf - | grep "keyword"
+  `pdftotext document.pdf - | grep "keyword"`
 
 **To extract and save text to a new file type use the follwoing**
   
-  pdftotext document.pdf extracted_output.txt
+  `pdftotext document.pdf extracted_output.txt`
 
